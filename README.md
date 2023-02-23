@@ -10,6 +10,8 @@ If there are multiple matching pods, it will output a list of candidates.
 
 - kexecti: execute a command inside a container
 
+  - same ```kubectl exec -ti -n my-namespace my-pod -- ls -l```
+
 ```
 host> $ kexecti my-pod ls -l
 total 4
@@ -18,12 +20,17 @@ total 4
 
 - kexecsh: Connect to the container with a bash shell
 
+  - same ```kubectl exec -ti -n my-namespace my-pod -- bash --login```
+
 ```
 host> $ kexecsh my-pod
 pod> $ 
 ```
 
 - klogf: Print the container's logs.
+
+  - same ```kubectl logs -f -n my-namespace my-pod```
+
 ```
 host> $ klogf my-pod
 ```
