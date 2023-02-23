@@ -20,12 +20,19 @@ _kube_get_pod_name() {
   _namespace=""
   local num=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" | grep ^$1 | wc -l`
 
-  if [ $num -eq 1 ]
+  if [ $num -eq 1 ]; then
     _podname=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" | grep ^$1`
     _namespace=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.namespace" --field-selector metadata.name=$_podname`
   elif [ $num -eq 0 ]; then
     echo "not found podname [$1]"
   else
+    # prefix 검색결과가 여러개면, equal 검색해보고 없으면 에러 처리
+    num=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" --field-selector metadata.name=$1 | wc -l`
+    if [ $num -eq 1 ]; then
+      _podname=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" --field-selector metadata.name=$1`
+      _namespace=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.namespace" --field-selector metadata.name=$_podname`
+      return
+    fi
     echo "multiple pods named [$1]"
     $_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" | grep ^$1
   fi
