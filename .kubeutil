@@ -18,16 +18,16 @@ PS1="[$(_kube_ps1)] $PS1"
 _kube_get_pod_name() {
   _podname=""
   _namespace=""
-  local num=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" | grep $1 | wc -l`
+  local num=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" | grep ^$1 | wc -l`
 
   if [ $num -eq 1 ]
-    _podname=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" | grep $1`
+    _podname=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" | grep ^$1`
     _namespace=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.namespace" --field-selector metadata.name=$_podname`
   elif [ $num -eq 0 ]; then
     echo "not found podname [$1]"
   else
     echo "multiple pods named [$1]"
-    $_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" | grep $1
+    $_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" | grep ^$1
   fi
 }
 
