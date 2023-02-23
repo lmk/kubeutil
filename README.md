@@ -1,6 +1,9 @@
 # kubeutil
 kubernetes utils 
 
+If input part of the pod name after the alias, it will find that pod and perform the command.
+If there are multiple matching pods, it will output a list of candidates.
+
 ## features
 
 - Displays the current context at the bash prompt.
