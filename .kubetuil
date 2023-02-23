@@ -1,0 +1,60 @@
+_KUBECTL=/usr/local/bin/kubectl
+
+_kube_get_context() {
+  KUBE_CONTEXT="$(${_KUBECTL} config current-context 2>/dev/null)"
+  IFS='@'
+  read -a arr <<<"$KUBE_CONTEXT"
+  KUBE_CONTEXT="${arr[1]}"
+  KUBE_CONTEXT="${KUBE_CONTEXT:-N/A}"
+}
+
+_kube_ps1() {
+  _kube_get_context
+  echo $KUBE_CONTEXT
+}
+
+PS1="[$(_kube_ps1)] $PS1"
+
+_kube_get_pod_name() {
+  _podname=""
+  _namespace=""
+  local num=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" | grep $1 | wc -l`
+
+  if [ $num -eq 1 ]
+    _podname=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" | grep $1`
+    _namespace=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.namespace" --field-selector metadata.name=$_podname`
+  elif [ $num -eq 0 ]; then
+    echo "not found podname [$1]"
+  else
+    echo "multiple pods named [$1]"
+    $_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" | grep $1
+  fi
+}
+
+_kube_exec_ti() {
+  _kube_get_pod_name $1
+
+  if [ "$_podname" != "" ]; then
+    $_KUBECTL exec -ti -n $_namespace $_podname -- ${*: 2:99}
+  fi
+}
+
+_kube_exec_sh() {
+  _kube_get_pod_name $1
+
+  if [ "$_podname" != "" ]; then
+    $_KUBECTL exec -ti -n $_namespace $_podname -- bash --login
+  fi
+}
+
+_kube_exec_logf() {
+  _kube_get_pod_name $1
+
+  if [ "$_podname" != "" ]; then
+    $_KUBECTL logs -f -n $_namespace $_podname
+  fi
+}
+
+alias kexecti=_kube_exec_ti
+alias kexecsh=_kube_exec_sh
+alias klogf=_kube_exec_logf
