@@ -18,50 +18,88 @@ PS1="[$(_kube_ps1)] $PS1"
 _kube_get_pod_name() {
   _podname=""
   _namespace=""
-  local num=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" | grep ^$1 | wc -l`
+  local array=(`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" | grep ^$1`)
+  local num=${#array[@]}
 
   if [ $num -eq 1 ]; then
-    _podname=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" | grep ^$1`
+    _podname=${array[0]}
     _namespace=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.namespace" --field-selector metadata.name=$_podname`
   elif [ $num -eq 0 ]; then
     echo "not found podname [$1]"
   else
     # prefix 검색결과가 여러개면, equal 검색해보고 없으면 에러 처리
-    num=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" --field-selector metadata.name=$1 | wc -l`
+    local array=(`printf "%s\n" "${array[@]}" | grep ^$1`)
+    local num=${#array[@]}
     if [ $num -eq 1 ]; then
-      _podname=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" --field-selector metadata.name=$1`
+      _podname=${array[0]}
       _namespace=`$_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.namespace" --field-selector metadata.name=$_podname`
       return
     fi
     echo "multiple pods named [$1]"
-    $_KUBECTL get pods -A --no-headers -o custom-columns=":metadata.name" | grep ^$1
+    printf "%s\n" "${array[@]}"
   fi
 }
 
-_kube_exec_ti() {
-  _kube_get_pod_name $1
+_usage_kexec() {
+  echo Usage: $ kexec pod-name command1...
+  echo Usage: $ kexecc pod-name container-name command1...
+}
 
-  if [ "$_podname" != "" ]; then
+_kexec() {
+
+  _kube_get_pod_name $1
+  if [ "$_podname" == "" ]; then
+    return
+  fi
+
+  if [ "$2" == "" ]; then
+    echo "$ $_KUBECTL exec -ti -n $_namespace $_podname -- ${*: 2:99}"
     $_KUBECTL exec -ti -n $_namespace $_podname -- ${*: 2:99}
+  else
+    echo "$ $_KUBECTL exec -ti -n $_namespace $_podname --container $2 -- ${*: 3:99}"
+    $_KUBECTL exec -ti -n $_namespace $_podname --container $2 -- ${*: 3:99}
   fi
 }
 
-_kube_exec_sh() {
+kexec() {
+  if [ $# -eq 0 ]; then
+    _usage_kexec
+    return
+  fi
+
+  _kexec ${*: 1:99}
+}
+
+kexecc() {
+  _kexec $1 "" ${*: 2:99}
+}
+
+kexecsh() {
+  if [ $# -eq 0 ]; then
+    echo Usage: $ kexecsh pod-name [container-name]
+    return
+  fi
+
   _kube_get_pod_name $1
-
-  if [ "$_podname" != "" ]; then
-    $_KUBECTL exec -ti -n $_namespace $_podname -- bash --login
+  if [ "$_podname" == "" ]; then
+    return
   fi
+
+  echo "$ $_KUBECTL exec -ti -n $_namespace $_podname -- sh --login"
+  $_KUBECTL exec -ti -n $_namespace $_podname -- sh --login
 }
 
-_kube_exec_logf() {
+klogf() {
+  if [ $# -eq 0 ]; then
+    echo Usage: $ klogf pod-name [container-name]
+    return
+  fi
+
   _kube_get_pod_name $1
-
-  if [ "$_podname" != "" ]; then
-    $_KUBECTL logs -f -n $_namespace $_podname
+  if [ "$_podname" == "" ]; then
+    return
   fi
-}
 
-alias kexecti=_kube_exec_ti
-alias kexecsh=_kube_exec_sh
-alias klogf=_kube_exec_logf
+  echo "$ $_KUBECTL logs -f -n $_namespace $_podname"
+  $_KUBECTL logs -f -n $_namespace $_podname
+}
